@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D DC Motor Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a0a;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            perspective: 1500px;
+        }
+
+        .motor-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .motor-3d {
+            width: 600px;
+            height: 600px;
+            position: relative;
+            transform-style: preserve-3d;
+            transform: rotateX(15deg) rotateY(0deg);
+            animation: autoRotate 20s linear infinite;
+        }
+
+        @keyframes autoRotate {
+            from { transform: rotateX(15deg) rotateY(0deg); }
+            to { transform: rotateX(15deg) rotateY(360deg); }
+        }
+
+        .motor-3d.paused {
+            animation-play-state: paused;
+        }
+
+        /* Stator Housing */
+        .stator-housing {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%) translateZ(-100px);
+            border: 3px solid rgba(59, 130, 246, 0.6);
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(30, 64, 175, 0.1), rgba(15, 23, 42, 0.3));
+            box-shadow: 0 0 40px rgba(59, 130, 246, 0.3), inset 0 0 40px rgba(59, 130, 246, 0.1);
+        }
+
+        /* North Pole */
+        .magnet-north {
+            position: absolute;
+            width: 120px;
+            height: 200px;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            left: 50%;
+            top: 0;
+            transform: translate(-50%, -20px) translateZ(50px);
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+        }
+
+        /* South Pole */
+        .magnet-south {
+            position: absolute;
+            width: 120px;
+            height: 200px;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            left: 50%;
+            bottom: 0;
+            transform: translate(-50%, 20px) translateZ(50px);
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+        }
+
+        /* Rotating Armature/Coil */
+        .armature {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%) translateZ(0px);
+            transform-style: preserve-3d;
+            animation: rotateArmature 2s linear infinite;
+        }
+
+        @keyframes rotateArmature {
+            from { transform: translate(-50%, -50%) translateZ(0px) rotateZ(0deg); }
+            to { transform: translate(-50%, -50%) translateZ(0px) rotateZ(360deg); }
+        }
+
+        .armature.paused {
+            animation-play-state: paused;
+        }
+
+        /* Coil Loop */
+        .coil {
+            position: absolute;
+            width: 160px;
+            height: 160px;
+            border: 6px solid #f59e0b;
+            border-radius: 10px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.8), inset 0 0 20px rgba(245, 158, 11, 0.3);
+        }
+
+        /* Additional coil loops */
+        .coil-2 {
+            transform: translate(-50%, -50%) rotateZ(45deg);
+            border-color: #fb923c;
+        }
+
+        .coil-3 {
+            transform: translate(-50%, -50%) rotateZ(90deg);
+            border-color: #fdba74;
+        }
+
+        /* Commutator (split ring) */
+        .commutator {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%) translateZ(10px);
+            border-radius: 50%;
+            background: linear-gradient(90deg, #fbbf24 50%, #6b7280 50%);
+            box-shadow: 0 0 15px rgba(251, 191, 36, 0.6);
+            animation: rotateCommutator 2s linear infinite;
+        }
+
+        @keyframes rotateCommutator {
+            from { transform: translate(-50%, -50%) translateZ(10px) rotateZ(0deg); }
+            to { transform: translate(-50%, -50%) translateZ(10px) rotateZ(360deg); }
+        }
+
+        .commutator.paused {
+            animation-play-state: paused;
+        }
+
+        /* Central Shaft */
+        .shaft {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%) translateZ(15px);
+            border-radius: 50%;
+            background: linear-gradient(135deg, #94a3b8, #475569);
+            box-shadow: 0 0 10px rgba(148, 163, 184, 0.5);
+        }
+
+        /* Carbon Brushes */
+        .brush-top {
+            position: absolute;
+            width: 40px;
+            height: 80px;
+            background: linear-gradient(180deg, #374151, #1f2937);
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -180px) translateZ(20px);
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(55, 65, 81, 0.6);
+        }
+
+        .brush-bottom {
+            position: absolute;
+            width: 40px;
+            height: 80px;
+            background: linear-gradient(180deg, #1f2937, #374151);
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, 100px) translateZ(20px);
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(55, 65, 81, 0.6);
+        }
+
+        /* Spark Effects */
+        .spark {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: #fbbf24;
+            border-radius: 50%;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -140px) translateZ(25px);
+            box-shadow: 0 0 10px #fbbf24, 0 0 20px #fbbf24;
+            animation: sparkle 0.5s ease-in-out infinite;
+        }
+
+        @keyframes sparkle {
+            0%, 100% { opacity: 0; transform: translate(-50%, -140px) translateZ(25px) scale(0.5); }
+            50% { opacity: 1; transform: translate(-50%, -140px) translateZ(25px) scale(1.5); }
+        }
+
+        /* Magnetic Field Lines */
+        .field-line {
+            position: absolute;
+            width: 2px;
+            height: 350px;
+            background: linear-gradient(180deg, transparent, rgba(139, 92, 246, 0.6), transparent);
+            left: 50%;
+            top: 50%;
+            transform-origin: center center;
+            opacity: 0.7;
+        }
+
+        .field-line-1 { transform: translate(-50%, -50%) translateZ(-50px) rotateZ(0deg); }
+        .field-line-2 { transform: translate(-50%, -50%) translateZ(-50px) rotateZ(30deg); }
+        .field-line-3 { transform: translate(-50%, -50%) translateZ(-50px) rotateZ(60deg); }
+        .field-line-4 { transform: translate(-50%, -50%) translateZ(-50px) rotateZ(90deg); }
+        .field-line-5 { transform: translate(-50%, -50%) translateZ(-50px) rotateZ(120deg); }
+        .field-line-6 { transform: translate(-50%, -50%) translateZ(-50px) rotateZ(150deg); }
+
+        /* Current Flow Particles */
+        .current-particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #22c55e;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #22c55e, 0 0 20px #22c55e;
+            animation: flowCurrent 2s linear infinite;
+        }
+
+        @keyframes flowCurrent {
+            0% { 
+                left: 50%;
+                top: 0%;
+                opacity: 0;
+            }
+            25% {
+                left: 100%;
+                top: 50%;
+                opacity: 1;
+            }
+            50% {
+                left: 50%;
+                top: 100%;
+                opacity: 1;
+            }
+            75% {
+                left: 0%;
+                top: 50%;
+                opacity: 1;
+            }
+            100% {
+                left: 50%;
+                top: 0%;
+                opacity: 0;
+            }
+        }
+
+        /* Force Arrows */
+        .force-arrow {
+            position: absolute;
+            width: 60px;
+            height: 4px;
+            background: #22c55e;
+            left: 50%;
+            top: 50%;
+            transform-origin: left center;
+            box-shadow: 0 0 10px #22c55e;
+        }
+
+        .force-arrow::after {
+            content: '';
+            position: absolute;
+            right: -10px;
+            top: -6px;
+            width: 0;
+            height: 0;
+            border-left: 15px solid #22c55e;
+            border-top: 7px solid transparent;
+            border-bottom: 7px solid transparent;
+        }
+
+        .force-arrow-1 { transform: translate(-80px, -80px) translateZ(30px) rotateZ(45deg); }
+        .force-arrow-2 { transform: translate(20px, -80px) translateZ(30px) rotateZ(135deg); }
+        .force-arrow-3 { transform: translate(20px, 0px) translateZ(30px) rotateZ(225deg); }
+        .force-arrow-4 { transform: translate(-80px, 0px) translateZ(30px) rotateZ(315deg); }
+
+        /* Info Display */
+        .info-display {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 12px;
+            padding: 16px;
+            color: white;
+            font-size: 12px;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .info-display h3 {
+            color: #3b82f6;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 6px 0;
+            gap: 20px;
+        }
+
+        .info-label {
+            color: #94a3b8;
+        }
+
+        .info-value {
+            color: #22c55e;
+            font-weight: bold;
+        }
+
+        /* Rotation Controls */
+        .view-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        .control-btn {
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            color: white;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .control-btn:hover {
+            background: rgba(59, 130, 246, 0.4);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .control-btn.active {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.5);
+        }
+
+        /* Educational Labels */
+        .component-label {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: #3b82f6;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        .label-north {
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .label-south {
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .label-coil {
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(245, 158, 11, 0.9);
+            color: white;
+        }
+
+        .label-commutator {
+            right: 80px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(251, 191, 36, 0.9);
+            color: #0a0a0a;
+        }
+
+        /* Loading Indicator */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #3b82f6;
+            font-size: 18px;
+            z-index: 1000;
+        }
+
+        /* Title */
+        .motor-title {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #e2e8f0;
+            font-size: 28px;
+            font-weight: 700;
+            text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+            z-index: 50;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .motor-3d {
+                width: 400px;
+                height: 400px;
+            }
+            .stator-housing {
+                width: 300px;
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">Initializing 3D Motor...</div>
+    
+    <div class="motor-title">3D DC Motor Visualization</div>
+    
+    <div class="motor-container">
+        <div class="motor-3d" id="motor3d">
+            <!-- Magnetic Field Lines -->
+            <div class="field-line field-line-1"></div>
+            <div class="field-line field-line-2"></div>
+            <div class="field-line field-line-3"></div>
+            <div class="field-line field-line-4"></div>
+            <div class="field-line field-line-5"></div>
+            <div class="field-line field-line-6"></div>
+
+            <!-- Stator Housing -->
+            <div class="stator-housing"></div>
+
+            <!-- Magnets -->
+            <div class="magnet-north">N</div>
+            <div class="magnet-south">S</div>
+
+            <!-- Rotating Armature with Coils -->
+            <div class="armature" id="armature">
+                <div class="coil"></div>
+                <div class="coil coil-2" id="coil2" style="display: none;"></div>
+                <div class="coil coil-3" id="coil3" style="display: none;"></div>
+                
+                <!-- Commutator -->
+                <div class="commutator" id="commutator"></div>
+                
+                <!-- Central Shaft -->
+                <div class="shaft"></div>
+        </div>
+        
+            <!-- Carbon Brushes -->
+            <div class="brush-top"></div>
+            <div class="brush-bottom"></div>
+
+            <!-- Sparks -->
+            <div class="spark" id="spark1"></div>
+            <div class="spark" id="spark2" style="transform: translate(-50%, 60px) translateZ(25px);"></div>
+
+            <!-- Current Flow Particles -->
+            <div class="current-particle" style="animation-delay: 0s;"></div>
+            <div class="current-particle" style="animation-delay: 0.5s;"></div>
+            <div class="current-particle" style="animation-delay: 1s;"></div>
+            <div class="current-particle" style="animation-delay: 1.5s;"></div>
+
+            <!-- Force Arrows -->
+            <div class="force-arrow force-arrow-1"></div>
+            <div class="force-arrow force-arrow-2"></div>
+            <div class="force-arrow force-arrow-3"></div>
+            <div class="force-arrow force-arrow-4"></div>
+
+            <!-- Component Labels -->
+            <div class="component-label label-north">North Pole (N)</div>
+            <div class="component-label label-south">South Pole (S)</div>
+            <div class="component-label label-coil">Rotating Coil</div>
+            <div class="component-label label-commutator">Commutator</div>
+        </div>
+
+        <!-- Info Display -->
+        <div class="info-display" id="infoDisplay">
+            <h3>⚡ Motor Parameters</h3>
+            <div class="info-row">
+                <span class="info-label">Magnetic Field:</span>
+                <span class="info-value" id="displayField">1.5 T</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Battery Voltage:</span>
+                <span class="info-value" id="displayVoltage">2.0 V</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Coil Loops:</span>
+                <span class="info-value" id="displayLoops">1</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Animation Speed:</span>
+                <span class="info-value" id="displaySpeed">1.0x</span>
+            </div>
+            <div class="info-row" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(59, 130, 246, 0.3);">
+                <span class="info-label">Status:</span>
+                <span class="info-value" id="displayStatus" style="color: #22c55e;">Running</span>
+            </div>
+        </div>
+
+        <!-- View Controls -->
+        <div class="view-controls">
+            <button class="control-btn active" onclick="setView('default')">🔄 Default</button>
+            <button class="control-btn" onclick="setView('side')">↔️ Side</button>
+            <button class="control-btn" onclick="setView('top')">⬆️ Top</button>
+            <button class="control-btn" onclick="setView('cross')">✂️ Section</button>
+        </div>
+    </div>
+
+    <script>
+        let motorParams = {
+            magneticField: 1.5,
+            voltage: 2.0,
+            loops: 1,
+            speed: 1.0,
+            running: true
+        };
+
+        // Hide loading after 500ms
+        setTimeout(() => {
+            document.getElementById('loading').style.display = 'none';
+        }, 500);
+
+        // Listen for parameter updates from React app
+        window.addEventListener('message', (event) => {
+            if (event.data.type === 'updateMotorParams') {
+                motorParams = {
+                    magneticField: event.data.magneticField || 1.5,
+                    voltage: event.data.voltage || 2.0,
+                    loops: event.data.loops || 1,
+                    speed: event.data.speed || 1.0,
+                    running: event.data.running !== false
+                };
+                updateMotorVisualization();
+            }
+        });
+
+        function updateMotorVisualization() {
+            // Update displays
+            document.getElementById('displayField').textContent = motorParams.magneticField.toFixed(1) + ' T';
+            document.getElementById('displayVoltage').textContent = motorParams.voltage.toFixed(1) + ' V';
+            document.getElementById('displayLoops').textContent = motorParams.loops;
+            document.getElementById('displaySpeed').textContent = motorParams.speed.toFixed(1) + 'x';
+            document.getElementById('displayStatus').textContent = motorParams.running ? 'Running' : 'Stopped';
+            document.getElementById('displayStatus').style.color = motorParams.running ? '#22c55e' : '#ef4444';
+
+            // Update number of visible coils
+            document.getElementById('coil2').style.display = motorParams.loops >= 2 ? 'block' : 'none';
+            document.getElementById('coil3').style.display = motorParams.loops >= 3 ? 'block' : 'none';
+
+            // Update animation speed
+            const armature = document.getElementById('armature');
+            const commutator = document.getElementById('commutator');
+            const baseDuration = 2; // seconds
+            const newDuration = baseDuration / motorParams.speed;
+            
+            armature.style.animationDuration = newDuration + 's';
+            commutator.style.animationDuration = newDuration + 's';
+
+            // Pause/Resume animation
+            if (motorParams.running) {
+                armature.classList.remove('paused');
+                commutator.classList.remove('paused');
+                document.getElementById('motor3d').classList.remove('paused');
+            } else {
+                armature.classList.add('paused');
+                commutator.classList.add('paused');
+                document.getElementById('motor3d').classList.add('paused');
+            }
+
+            // Update magnetic field visualization (opacity based on field strength)
+            const fieldStrengthRatio = (motorParams.magneticField - 1) / 1; // 0 to 1
+            document.querySelectorAll('.field-line').forEach(line => {
+                line.style.opacity = 0.3 + fieldStrengthRatio * 0.7;
+            });
+
+            // Update coil brightness based on voltage
+            const voltageRatio = (motorParams.voltage - 1) / 4; // 0 to 1
+            document.querySelectorAll('.coil').forEach(coil => {
+                const brightness = 0.8 + voltageRatio * 0.5;
+                coil.style.filter = `brightness(${brightness})`;
+            });
+        }
+
+        // View rotation functions
+        let currentView = 'default';
+        function setView(view) {
+            currentView = view;
+            const motor = document.getElementById('motor3d');
+            
+            // Remove active class from all buttons
+            document.querySelectorAll('.control-btn').forEach(btn => btn.classList.remove('active'));
+            
+            // Add active class to clicked button
+            event.target.classList.add('active');
+            
+            switch(view) {
+                case 'default':
+                    motor.style.animation = 'autoRotate 20s linear infinite';
+                    break;
+                case 'side':
+                    motor.style.animation = 'none';
+                    motor.style.transform = 'rotateX(0deg) rotateY(90deg)';
+                    break;
+                case 'top':
+                    motor.style.animation = 'none';
+                    motor.style.transform = 'rotateX(90deg) rotateY(0deg)';
+                    break;
+                case 'cross':
+                    motor.style.animation = 'none';
+                    motor.style.transform = 'rotateX(15deg) rotateY(45deg)';
+                    // Add transparency for cross-section
+                    document.querySelector('.stator-housing').style.opacity = '0.3';
+                    setTimeout(() => {
+                        document.querySelector('.stator-housing').style.opacity = '1';
+                    }, 3000);
+                    break;
+            }
+        }
+
+        // Initialize with default values
+        updateMotorVisualization();
+
+        // Mouse drag to rotate
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let rotation = { x: 15, y: 0 };
+
+        document.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.control-btn') || e.target.closest('.info-display')) return;
+            isDragging = true;
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+            document.getElementById('motor3d').style.animation = 'none';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            
+            const deltaX = e.clientX - previousMousePosition.x;
+            const deltaY = e.clientY - previousMousePosition.y;
+            
+            rotation.y += deltaX * 0.5;
+            rotation.x -= deltaY * 0.5;
+            
+            document.getElementById('motor3d').style.transform = 
+                `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)`;
+            
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        // Zoom with mouse wheel
+        let zoomLevel = 1;
+        document.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            zoomLevel += e.deltaY * -0.001;
+            zoomLevel = Math.min(Math.max(0.5, zoomLevel), 2);
+            document.getElementById('motor3d').style.scale = zoomLevel;
+        });
+    </script>
+</body>
+</html>
