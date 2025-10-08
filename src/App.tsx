@@ -4,7 +4,7 @@ import { useLightweightStore } from './store/lightweightStore';
 // Import lightweight components
 import LightweightHeader from './components/LightweightHeader';
 import LightweightCircuitSimulator from './components/LightweightCircuitSimulator';
-import EnhancedMotorLab from './components/EnhancedMotorLab';
+import NewMotorLab from './components/NewMotorLab';
 import EnhancedTransformerSimulator from './components/EnhancedTransformerSimulator';
 import EnhancedOhmLawSimulator from './components/LightweightOhmLawSimulator';
 import EnhancedKirchhoffSimulator from './components/ScrollBasedKirchhoffSimulator';
@@ -69,11 +69,12 @@ const LightweightApp: React.FC = () => {
   }, []);
 
   const renderScene = () => {
+    console.log('Current scene:', state.currentScene); // Debug log
     switch (state.currentScene) {
       case 'circuit':
         return <LightweightCircuitSimulator />;
       case 'motor':
-        return <EnhancedMotorLab key="motor-lab" />;
+        return <NewMotorLab />;
       case 'ohm':
         return <EnhancedOhmLawSimulator />;
     case 'transformer':

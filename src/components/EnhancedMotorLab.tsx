@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useLightweightStore } from '../store/lightweightStore';
+// import { useLightweightStore } from '../store/lightweightStore'; // Removed to prevent rendering issues
 
 type MotorType = 'DC' | 'AC';
 
 const EnhancedMotorLab: React.FC = React.memo(() => {
-  const [state] = useLightweightStore();
+  // Remove store dependency to prevent rendering issues
+  // const [state] = useLightweightStore();
   const [motorType, setMotorType] = useState<MotorType>('DC');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>();
@@ -101,7 +102,7 @@ const EnhancedMotorLab: React.FC = React.memo(() => {
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
     
     // Grid
-    if (state.showGrid) {
+    if (true) { // Always show grid for motor lab
       ctx.strokeStyle = 'rgba(59, 130, 246, 0.08)';
       ctx.lineWidth = 1;
       for (let x = 0; x < canvasWidth; x += 30) {
@@ -387,7 +388,7 @@ const EnhancedMotorLab: React.FC = React.memo(() => {
       ctx.textAlign = 'center';
       ctx.fillText('⏸️ Motor Stopped', centerX, statusY);
     }
-  }, [acMotor, state.showGrid]);
+  }, [acMotor]); // Removed state dependency
 
   // Ultra-Optimized Animation Loop - Perfect Performance & Crisp Rendering
   useEffect(() => {

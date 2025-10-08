@@ -38,6 +38,7 @@ class LightweightStateManager {
 
   // Scene management
   setCurrentScene(scene: LightweightState['currentScene']): void {
+    console.log('Store: setCurrentScene called with:', scene); // Debug log
     this.setState({ currentScene: scene });
   }
 

@@ -51,7 +51,10 @@ const LightweightHeader: React.FC = () => {
         {scenes.map(scene => (
           <button
             key={scene.id}
-            onClick={() => store.setCurrentScene(scene.id as any)}
+            onClick={() => {
+              console.log('Switching to scene:', scene.id); // Debug log
+              store.setCurrentScene(scene.id as any);
+            }}
             style={{
               padding: '8px 16px',
               background: state.currentScene === scene.id 
