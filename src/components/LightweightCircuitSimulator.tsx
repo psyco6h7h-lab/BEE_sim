@@ -42,6 +42,7 @@ const LightweightCircuitSimulator: React.FC = () => {
   });
   const [appState, store] = useLightweightStore();
   const [frequencyHz, setFrequencyHz] = useState(60);
+  const [circuitStartTime, setCircuitStartTime] = useState(Date.now());
 
   // Animation frame for smooth rendering
   const animationFrameRef = useRef<number>();
@@ -70,67 +71,6 @@ const LightweightCircuitSimulator: React.FC = () => {
   const isAdjustableComponent = (component: Component): component is Component & { type: AdjustableType } =>
     ['battery', 'resistor', 'capacitor', 'inductor', 'bulb'].includes(component.type);
 
-  const toggleSelectedSwitch = useCallback(() => {
-    if (!selectedComponent || selectedComponent.type !== 'switch') return;
-    const nextValue = selectedComponent.value >= 0.5 ? 0 : 1;
-    setComponents(prev => prev.map(component =>
-      component.id === selectedComponent.id ? { ...component, value: nextValue } : component
-    ));
-    setStatusMessage(nextValue ? 'Switch closed. Circuit complete.' : 'Switch opened. Circuit interrupted.');
-    
-    // Force immediate circuit recalculation
-    setTimeout(() => {
-      const componentMap = new Map<string, Component>();
-      components.forEach(component => componentMap.set(component.id, component));
-      
-      const batteries = components.filter(component => component.type === 'battery');
-      const resistors = components.filter(component => component.type === 'resistor');
-      const bulbs = components.filter(component => component.type === 'bulb');
-      const switchStates = components.filter(component => component.type === 'switch');
-      
-      const anyOpenSwitch = switchStates.some(component => component.value < 0.5);
-      const activeVoltage = anyOpenSwitch ? 0 : batteries.reduce((sum, component) => sum + component.value, 0);
-      
-      if (batteries.length === 0 || activeVoltage === 0) {
-        setSimulation(prev => ({
-          ...prev,
-          voltage: activeVoltage,
-          current: 0,
-          resistance: resistors.reduce((sum, resistor) => sum + resistor.value, 0),
-          power: 0
-        }));
-        setBulbIntensity({});
-        return;
-      }
-      
-      const totalResistance = resistors.reduce((sum, resistor) => sum + resistor.value, 0) + bulbs.reduce((sum, bulb) => sum + Math.max(1, bulb.value / 200), 0);
-      const current = totalResistance > 0 ? activeVoltage / totalResistance : 0;
-      
-      setSimulation(prev => ({
-        ...prev,
-        voltage: activeVoltage,
-        current,
-        resistance: totalResistance,
-        power: activeVoltage * current
-      }));
-      
-      // Immediate bulb response
-      if (!anyOpenSwitch) {
-        setBulbIntensity(prev => {
-          const updated: Record<string, number> = { ...prev };
-          bulbs.forEach(bulb => {
-            const voltageFactor = Math.min(1, activeVoltage / 50);
-            const currentFactor = Math.min(1, current * 10);
-            const brightness = Math.min(1, Math.max(0, voltageFactor * currentFactor));
-            updated[bulb.id] = brightness;
-          });
-          return updated;
-        });
-      } else {
-        setBulbIntensity({});
-      }
-    }, 0);
-  }, [selectedComponent, components]);
 
   // Draw functions
   const drawComponent = useCallback((ctx: CanvasRenderingContext2D, component: Component) => {
@@ -1172,6 +1112,34 @@ const LightweightCircuitSimulator: React.FC = () => {
       totalResistance += bulbResistance;
     });
     
+    // Add capacitor equivalent resistance (for DC steady state)
+    const capacitors = components.filter(component => component.type === 'capacitor');
+    const inductors = components.filter(component => component.type === 'inductor');
+    
+    // For DC circuits: Capacitors = open circuit, Inductors = short circuit
+    // But we'll simulate charging/discharging behavior
+    const totalCapacitance = capacitors.reduce((sum, cap) => sum + cap.value, 0);
+    const totalInductance = inductors.reduce((sum, ind) => sum + ind.value, 0);
+    
+    // Time-based charging simulation (simplified)
+    const currentTime = Date.now() * 0.001; // Convert to seconds
+    const timeConstant = totalResistance * totalCapacitance; // RC time constant
+    
+    // If capacitors are present, simulate charging behavior
+    let capacitorResistance = 0;
+    if (totalCapacitance > 0 && timeConstant > 0) {
+      // Initially capacitors act like short circuits, then gradually become open
+      const chargingProgress = Math.min(1, currentTime / (timeConstant * 5)); // 5 time constants to fully charge
+      capacitorResistance = (1 - chargingProgress) * 0.001; // Start as short circuit, become open
+      
+      // Add very high resistance when fully charged (simulate open circuit)
+      if (chargingProgress > 0.95) {
+        capacitorResistance = 10000; // Very high resistance = open circuit
+      }
+    }
+    
+    totalResistance += capacitorResistance;
+    
     // Step 3: Apply Ohm's Law (I = V/R)
     const current = totalResistance > 0 ? totalVoltage / totalResistance : 0;
     const power = current * current * totalResistance; // P = I²R
@@ -1203,6 +1171,13 @@ const LightweightCircuitSimulator: React.FC = () => {
           // Calculate brightness: 0 to 1
           const brightness = Math.min(bulbPower / ratedPower, 1);
           newBulbIntensity[bulb.id] = brightness;
+          
+          // 🐛 DEBUG: Bulb brightness calculation
+          console.log(`💡 Bulb ${bulb.id}:`, {
+            resistance: bulbResistance.toFixed(2) + 'Ω',
+            power: bulbPower.toFixed(2) + 'W',
+            brightness: (brightness * 100).toFixed(0) + '%'
+          });
         } else {
           newBulbIntensity[bulb.id] = 0;
         }
@@ -1212,51 +1187,84 @@ const LightweightCircuitSimulator: React.FC = () => {
       bulbs.forEach(bulb => {
         newBulbIntensity[bulb.id] = 0;
       });
+      
+      if (bulbs.length > 0) {
+        console.log('💡 Bulbs OFF because:', anyOpenSwitch ? 'Switch is OPEN' : current <= 0.001 ? 'No current (I=' + current.toFixed(4) + 'A)' : 'Unknown');
+      }
     }
     setBulbIntensity(newBulbIntensity);
+    
+    // 🐛 DEBUG: Log circuit state for troubleshooting (AFTER bulb calculation)
+    console.log('🔌 Circuit Calculation:', {
+      batteries: batteries.length,
+      totalVoltage: totalVoltage.toFixed(2) + 'V',
+      resistors: resistors.length,
+      bulbs: bulbs.length,
+      switches: switches.length,
+      anyOpenSwitch,
+      totalResistance: totalResistance.toFixed(2) + 'Ω',
+      current: current.toFixed(4) + 'A',
+      power: power.toFixed(2) + 'W',
+      bulbsGlowing: Object.keys(newBulbIntensity).length
+    });
 
-    // UPDATE COMPONENT STATES
-    setComponents(prev => prev.map(comp => {
-      const updatedComp = { ...comp };
-      
-      // 💡 BULB: Power-based brightness (same as Kirchhoff simulator)
-      if (comp.type === 'bulb') {
-        if (current > 0.01 && !anyOpenSwitch) {
-          // Power-based brightness: P = I²R
-          const bulbResistance = Math.max(1, comp.value / 10);
-          const bulbPower = current * current * bulbResistance;
-          const ratedPower = 6; // 6W rated bulb
+    // UPDATE COMPONENT STATES - Only if values actually changed to prevent infinite loops
+    setComponents(prev => {
+      let hasChanges = false;
+      const updated = prev.map(comp => {
+        const updatedComp = { ...comp };
+        
+        // 💡 BULB: Power-based brightness (same as Kirchhoff simulator)
+        if (comp.type === 'bulb') {
+          let newBrightness = 0;
+          if (current > 0.01 && !anyOpenSwitch) {
+            // Power-based brightness: P = I²R
+            const bulbResistance = Math.max(1, comp.value / 10);
+            const bulbPower = current * current * bulbResistance;
+            const ratedPower = 6; // 6W rated bulb
+            
+            newBrightness = Math.min(bulbPower / ratedPower, 1);
+          }
           
-          updatedComp.brightness = Math.min(bulbPower / ratedPower, 1);
-        } else {
-          // Circuit inactive OR switch open = no glow
-          updatedComp.brightness = 0;
+          // Only update if brightness changed significantly (avoid infinite re-renders)
+          if (Math.abs((comp.brightness || 0) - newBrightness) > 0.001) {
+            updatedComp.brightness = newBrightness;
+            hasChanges = true;
+          }
         }
-      }
-      
-      // 🔌 RESISTOR: Overload detection
-      if (comp.type === 'resistor') {
-        const maxCurrent = 0.1; // 100mA
-        const maxVoltage = 50;  // 50V
-        const maxPower = 0.25;  // 0.25W
         
-        const resistorCurrent = current;
-        const resistorVoltage = current * comp.value;
-        const resistorPower = current * current * comp.value;
+        // 🔌 RESISTOR: Overload detection
+        if (comp.type === 'resistor') {
+          const maxCurrent = 0.1; // 100mA
+          const maxVoltage = 50;  // 50V
+          const maxPower = 0.25;  // 0.25W
+          
+          const resistorCurrent = current;
+          const resistorVoltage = current * comp.value;
+          const resistorPower = current * current * comp.value;
+          
+          const newOverloadState = (resistorCurrent > maxCurrent) || 
+                                    (resistorVoltage > maxVoltage) || 
+                                    (resistorPower > maxPower);
+          
+          if (comp.isOverloaded !== newOverloadState) {
+            updatedComp.isOverloaded = newOverloadState;
+            hasChanges = true;
+          }
+        }
         
-        updatedComp.isOverloaded = (resistorCurrent > maxCurrent) || 
-                                  (resistorVoltage > maxVoltage) || 
-                                  (resistorPower > maxPower);
-      }
+        return updatedComp;
+      });
       
-      return updatedComp;
-    }));
+      // Only update state if something actually changed
+      return hasChanges ? updated : prev;
+    });
   }, [components, frequencyHz]);
 
-  // Auto-calculate circuit whenever components change - FIXED INFINITE LOOP
+  // Auto-calculate circuit whenever components change
   useEffect(() => {
     calculateCircuit();
-  }, [wires, frequencyHz]); // Removed 'components' to prevent infinite loop
+  }, [components, wires, frequencyHz]); // Must include components for real-time updates!
 
   // Canvas resize
   useEffect(() => {
@@ -1433,25 +1441,17 @@ const LightweightCircuitSimulator: React.FC = () => {
           
         {selectedComponent && selectedComponent.type === 'switch' && (
           <div style={{ marginBottom: '24px', padding: '16px', borderRadius: '12px', background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)' }}>
-            <h4 style={{ color: '#cbd5f5', fontSize: '14px', fontWeight: 600, marginBottom: '12px' }}>Switch Control</h4>
-          <button
-              onClick={toggleSelectedSwitch}
-            style={{
-                width: '100%',
-                padding: '10px 0',
-                borderRadius: '12px',
-              border: 'none',
-                background: selectedComponent.value >= 0.5 ? 'linear-gradient(135deg, #22c55e, #16a34a)' : 'linear-gradient(135deg, #ef4444, #b91c1c)',
-              color: '#fff',
-              cursor: 'pointer',
-                fontSize: '13px',
-                fontWeight: 600
-            }}
-          >
-              {selectedComponent.value >= 0.5 ? 'Turn OFF Switch' : 'Turn ON Switch'}
-          </button>
-            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '8px' }}>
-              {selectedComponent.value >= 0.5 ? 'Switch is ON – current flows.' : 'Switch is OFF – current stops.'}
+            <h4 style={{ color: '#cbd5f5', fontSize: '14px', fontWeight: 600, marginBottom: '12px' }}>Switch Info</h4>
+            <div style={{ fontSize: '13px', color: '#e2e8f0', marginBottom: '8px', padding: '10px', background: 'rgba(15,23,42,0.5)', borderRadius: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Status:</span>
+                <strong style={{ color: selectedComponent.isOn ? '#22c55e' : '#ef4444' }}>
+                  {selectedComponent.isOn ? '● ON' : '○ OFF'}
+                </strong>
+              </div>
+            </div>
+            <div style={{ fontSize: '12px', color: '#94a3b8', lineHeight: '1.6' }}>
+              💡 <strong>Tip:</strong> Click the switch on the canvas to toggle it ON/OFF and control current flow.
             </div>
           </div>
         )}
