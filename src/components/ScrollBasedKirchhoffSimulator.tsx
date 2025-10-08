@@ -128,7 +128,7 @@ const ScrollBasedKirchhoffSimulator: React.FC = () => {
       const totalResistance = branches.reduce((sum, b) => sum + b.resistance, 0);
       const totalCurrent = sourceVoltage / totalResistance;
       
-      const updatedBranches = branches.map((branch, index) => {
+      const updatedBranches = branches.map((branch, _index) => {
         const voltageDrop = totalCurrent * branch.resistance;
         return {
           ...branch,
@@ -153,7 +153,7 @@ const ScrollBasedKirchhoffSimulator: React.FC = () => {
     } else if (selectedCircuit === 'parallel') {
       // Parallel circuit: Same voltage, current divides
       const totalResistance = 1 / branches.reduce((sum, b) => sum + 1/b.resistance, 0);
-      const totalCurrent = sourceVoltage / totalResistance;
+      const _totalCurrent = sourceVoltage / totalResistance;
       
       const updatedBranches = branches.map(branch => {
         const branchCurrent = sourceVoltage / branch.resistance;
@@ -276,7 +276,7 @@ const ScrollBasedKirchhoffSimulator: React.FC = () => {
     return () => observer.disconnect();
   }, []);
 
-  const drawCircuit = useCallback((ctx: CanvasRenderingContext2D, time: number) => {
+  const drawCircuit = useCallback((ctx: CanvasRenderingContext2D, _time: number) => {
     const centerX = ctx.canvas.width / 2;
     const centerY = ctx.canvas.height / 2;
     const scale = Math.min(ctx.canvas.width, ctx.canvas.height) / 600;
@@ -336,7 +336,7 @@ const ScrollBasedKirchhoffSimulator: React.FC = () => {
     ctx.fillText(`${circuit.sourceVoltage}V`, sourceX, sourceY - sourceHeight/2 - 15);
 
     // NODES (Junction points)
-    circuit.nodes.forEach((node, index) => {
+    circuit.nodes.forEach((node, _index) => {
       const x = node.x * scale;
       const y = node.y * scale;
       
@@ -368,7 +368,7 @@ const ScrollBasedKirchhoffSimulator: React.FC = () => {
     });
 
     // BRANCHES (Resistors and connections)
-    circuit.branches.forEach((branch, index) => {
+    circuit.branches.forEach((branch, _index) => {
       const fromNode = circuit.nodes.find(n => n.id === branch.from);
       const toNode = circuit.nodes.find(n => n.id === branch.to);
       
@@ -585,7 +585,7 @@ const ScrollBasedKirchhoffSimulator: React.FC = () => {
   }, [circuit, selectedCircuit, analysisMode, showGraphs]);
 
   // Enhanced graph drawing function with proper scaling
-  const drawGraphs = useCallback((ctx: CanvasRenderingContext2D, centerX: number, centerY: number, scale: number) => {
+  const drawGraphs = useCallback((ctx: CanvasRenderingContext2D, centerX: number, centerY: number, _scale: number) => {
     const graphY = centerY + 200;
     const graphWidth = 400;
     const graphHeight = 120;
@@ -1161,7 +1161,7 @@ const ScrollBasedKirchhoffSimulator: React.FC = () => {
                 KCL Node Analysis
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', height: 'calc(100% - 40px)' }}>
-                {circuit.nodes.slice(0, 4).map((node, index) => {
+                {circuit.nodes.slice(0, 4).map((node, _index) => {
                   const incomingCurrents = circuit.branches.filter(b => b.to === node.id).map(b => b.current);
                   const outgoingCurrents = circuit.branches.filter(b => b.from === node.id).map(b => b.current);
                   const sumIn = incomingCurrents.reduce((a, b) => a + b, 0);
@@ -1240,7 +1240,7 @@ const ScrollBasedKirchhoffSimulator: React.FC = () => {
                 KVL Loop Analysis
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', height: 'calc(100% - 40px)' }}>
-                {circuit.branches.slice(0, 4).map((branch, index) => {
+                {circuit.branches.slice(0, 4).map((branch, _index) => {
                   const voltageDrop = branch.current * branch.resistance;
                   const power = branch.current * voltageDrop;
                   
