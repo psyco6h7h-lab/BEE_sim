@@ -73,7 +73,7 @@ const LightweightApp: React.FC = () => {
       case 'circuit':
         return <LightweightCircuitSimulator />;
       case 'motor':
-        return <EnhancedMotorLab />;
+        return <EnhancedMotorLab key="motor-lab" />;
       case 'ohm':
         return <EnhancedOhmLawSimulator />;
     case 'transformer':

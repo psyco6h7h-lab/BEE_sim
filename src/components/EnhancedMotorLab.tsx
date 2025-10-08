@@ -3,7 +3,7 @@ import { useLightweightStore } from '../store/lightweightStore';
 
 type MotorType = 'DC' | 'AC';
 
-const EnhancedMotorLab: React.FC = () => {
+const EnhancedMotorLab: React.FC = React.memo(() => {
   const [state] = useLightweightStore();
   const [motorType, setMotorType] = useState<MotorType>('DC');
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -1240,6 +1240,6 @@ const EnhancedMotorLab: React.FC = () => {
       </div>
     </div>
   );
-};
+});
 
 export default EnhancedMotorLab;
